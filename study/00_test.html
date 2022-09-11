@@ -8,5 +8,15 @@
 	</head>
 	<body>
 		<h1>Hello. Three.js!</h1>
+		<button id="move">move</button>
+		<script>
+			const moveHtml = document.getElementById("move");
+
+			function goMain() {
+				window.open("01-basic.html");
+			}
+
+			moveHtml.addEventListener("click", goMain);
+		</script>
 	</body>
 </html>
