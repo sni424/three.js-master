@@ -1,4 +1,5 @@
 import * as THREE from "../build/three.module.js";
+import { OrbitControls } from "../examples/jsm/controls/OrbitControls.js";
 
 /** ._ 밑줄이 있는 것은 app클래스 내부에서만 쓰이는 프라이빗 메서드  */
 
@@ -23,6 +24,7 @@ class App {
 		this._setupCamera();
 		this._setupLight();
 		this._setupModel();
+		this._setupControls();
 
 		/**창크기가 변경될때 발생 bind을 사용한 이유는 this가 app클래스 객체가 되기위함 */
 		window.onresize = this.resize.bind(this);
@@ -30,6 +32,9 @@ class App {
 
 		/**render메서드는 3차원 그래픽장면을 만들어주는 메서드 */
 		requestAnimationFrame(this.render.bind(this));
+	}
+	_setupControls() {
+		new OrbitControls(this._camera, this._divCotainer);
 	}
 
 	_setupCamera() {
@@ -58,15 +63,26 @@ class App {
 	/**파랑색 개열의 정육면제를 생성하는 코드 */
 	_setupModel() {
 		/**정육면체 형상 BoxGeometry는 각각 가로 세로 깊이 값 */
-		const geometry = new THREE.BoxGeometry(1, 1, 1);
-		/**파랑색 개열의 제질 생성 */
-		const material = new THREE.MeshPhongMaterial({ color: 0x44a88 });
+		const geometry = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2);
+		const fillMaterial = new THREE.MeshPhongMaterial({ color: 0x515151 });
+		const cube = new THREE.Mesh(geometry, fillMaterial);
 
-		/**geometry와 material 객체를 통해 cube를 생성   */
-		const cube = new THREE.Mesh(geometry, material);
+		const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
+		const line = new THREE.LineSegments(
+			new THREE.WireframeGeometry(geometry),
+			lineMaterial
+		);
+		const group = new THREE.Group();
 
-		this._scene.add(cube);
-		this._cube = cube;
+		group.add(cube);
+		group.add(line);
+
+		this._scene.add(group);
+		this._cube = group;
+	}
+	update(time) {
+		/**받은 time값에 0.001을 곱한다 */
+		time *= 0.001;
 	}
 	resize() {
 		/** divCotainer의 width과height를 가져옴  */
@@ -87,14 +103,6 @@ class App {
 		this.update(time);
 		/** 브라우저에게 수행하기를 원하는 애니메이션을 알리고 다음 리페인트가 진행되기 전에 해당 애니메이션을 업데이트하는 함수를 호출하게 합니다. 이 메소드는 리페인트 이전에 실행할 콜백을 인자로 받습니다. */
 		requestAnimationFrame(this.render.bind(this));
-	}
-
-	update(time) {
-		/**받은 time값에 0.001을 곱한다 */
-		time *= 0.001;
-		this._cube.rotation.x = time;
-		this._cube.rotation.y = time;
-		this._cube.rotation.z = time;
 	}
 }
 
