@@ -10,9 +10,11 @@
 		<h1>Hello. Three.js!</h1>
 		<button id="move">move</button>
 		<button id="move2">move2</button>
+		<button id="move3">move3</button>
 		<script>
 			const moveHtml = document.getElementById("move");
 			const moveHtml2 = document.getElementById("move2");
+			const moveHtml3 = document.getElementById("move3");
 
 			function goMain() {
 				window.open("01-basic.html");
@@ -22,8 +24,13 @@
 				window.open("02-geometry.html");
 			}
 
+			function goMain3() {
+				window.open("03-scengraph.html");
+			}
+
 			moveHtml.addEventListener("click", goMain);
 			moveHtml2.addEventListener("click", goMain2);
+			moveHtml3.addEventListener("click", goMain3);
 		</script>
 	</body>
 </html>
