@@ -62,23 +62,24 @@ class App {
 	}
 	/**파랑색 개열의 정육면제를 생성하는 코드 */
 	_setupModel() {
-		/**정육면체 형상 BoxGeometry는 각각 가로 세로 깊이 값 */
-		const geometry = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2);
-		const fillMaterial = new THREE.MeshPhongMaterial({ color: 0x515151 });
-		const cube = new THREE.Mesh(geometry, fillMaterial);
+		const shape = new THREE.Shape();
+		/**좌표를 1,1에서 시작 */
+		shape.moveTo(1, 1);
+		/**line 으로 선을 그음 */
+		shape.lineTo(1, -1);
+		shape.lineTo(-1, -1);
+		shape.lineTo(-1, 1);
+		/**closePath로 도형을 닫음 */
+		shape.closePath();
 
-		const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
-		const line = new THREE.LineSegments(
-			new THREE.WireframeGeometry(geometry),
-			lineMaterial
-		);
-		const group = new THREE.Group();
+		const geometry = new THREE.BufferGeometry();
+		const points = shape.getPoints();
+		geometry.setFromPoints(points);
 
-		group.add(cube);
-		group.add(line);
+		const material = new THREE.LineBasicMaterial({ color: 0xffff00 });
+		const line = new THREE.Line(geometry, material);
 
-		this._scene.add(group);
-		this._cube = group;
+		this._scene.add(line);
 	}
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
