@@ -44,7 +44,7 @@ class App {
 			0.1,
 			100
 		);
-		camera.position.z = 50;
+		camera.position.z = 25;
 
 		this._camera = camera;
 	}
@@ -66,6 +66,7 @@ class App {
 		const soloarSystem = new THREE.Object3D();
 		this._scene.add(soloarSystem);
 
+		/**반지름 */
 		const radius = 1;
 		const widthSegments = 12;
 		const heightSegments = 12;
@@ -75,19 +76,64 @@ class App {
 			heightSegments
 		);
 
+		/**태양 재질 색상 및 flatShading */
 		const sunMaterial = new THREE.MeshPhongMaterial({
 			emissive: 0xffff00,
 			flatShading: true,
 		});
 
+		/**모양과 재질을 합침 */
 		const sunMesh = new THREE.Mesh(sphereGemetry, sunMaterial);
 		sunMesh.scale.set(3, 3, 3);
 		soloarSystem.add(sunMesh);
+
+		/**지구객체를 솔라에 자식으로 추가 */
+		const earthOrbit = new THREE.Object3D();
+		soloarSystem.add(earthOrbit);
+
+		/**지구 재질 추가 */
+		const earthMaterial = new THREE.MeshPhongMaterial({
+			color: 0x2233ff,
+			emissive: 0x112244,
+			flatShading: true,
+		});
+
+		//구 지오메트리와 재질을 합침
+		const earthMesh = new THREE.Mesh(sphereGemetry, earthMaterial);
+		earthOrbit.position.x = 10;
+		earthOrbit.add(earthMesh);
+
+		/**달 객체 */
+		const moonOrbit = new THREE.Object3D();
+		moonOrbit.position.x = 2;
+		earthOrbit.add(moonOrbit);
+
+		/**달 재질 */
+		const moonMaterial = new THREE.MeshPhongMaterial({
+			color: 0x888888,
+			emissive: 0x222222,
+			flatShading: true,
+		});
+
+		/** 달 객체와 재질을 합침 */
+		const moonMesh = new THREE.Mesh(sphereGemetry, moonMaterial);
+		moonMesh.scale.set(0.5, 0.5, 0.5);
+		moonOrbit.add(moonMesh);
+
+		this._solarSystem = soloarSystem;
+		this._earthOrbit = earthOrbit;
+		this._moonOrbit = moonOrbit;
 	}
 
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
 		time *= 0.001;
+		/**태양 자전추가 태양이 자전하면 지구는 공전한다 */
+		this._solarSystem.rotation.y = time / 2;
+		/**지구 자전 */
+		this._earthOrbit.rotation.y = time * 2;
+		/**달 자전 */
+		this._moonOrbit.rotation.y = time * 5;
 	}
 	resize() {
 		/** divCotainer의 width과height를 가져옴  */
