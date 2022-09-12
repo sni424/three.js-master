@@ -38,13 +38,14 @@ class App {
 	}
 
 	_setupCamera() {
-		/**width,height 3차원 영역을 표현할 가로와 세로 크기 */
-		const width = this._divCotainer.clientWidth;
-		const height = this._divCotainer.clientHeight;
-		/**camera객체 생성 */
-		const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
-		camera.position.z = 2;
-		/**또다른 메서드에서 사용가능하도록  this._camera필드 객체로 설정*/
+		const camera = new THREE.PerspectiveCamera(
+			75,
+			window.innerWidth / window.innerHeight,
+			0.1,
+			100
+		);
+		camera.position.z = 50;
+
 		this._camera = camera;
 	}
 
@@ -62,25 +63,28 @@ class App {
 	}
 	/**파랑색 개열의 정육면제를 생성하는 코드 */
 	_setupModel() {
-		const shape = new THREE.Shape();
-		/**좌표를 1,1에서 시작 */
-		shape.moveTo(1, 1);
-		/**line 으로 선을 그음 */
-		shape.lineTo(1, -1);
-		shape.lineTo(-1, -1);
-		shape.lineTo(-1, 1);
-		/**closePath로 도형을 닫음 */
-		shape.closePath();
+		const soloarSystem = new THREE.Object3D();
+		this._scene.add(soloarSystem);
 
-		const geometry = new THREE.BufferGeometry();
-		const points = shape.getPoints();
-		geometry.setFromPoints(points);
+		const radius = 1;
+		const widthSegments = 12;
+		const heightSegments = 12;
+		const sphereGemetry = new THREE.SphereGeometry(
+			radius,
+			widthSegments,
+			heightSegments
+		);
 
-		const material = new THREE.LineBasicMaterial({ color: 0xffff00 });
-		const line = new THREE.Line(geometry, material);
+		const sunMaterial = new THREE.MeshPhongMaterial({
+			emissive: 0xffff00,
+			flatShading: true,
+		});
 
-		this._scene.add(line);
+		const sunMesh = new THREE.Mesh(sphereGemetry, sunMaterial);
+		sunMesh.scale.set(3, 3, 3);
+		soloarSystem.add(sunMesh);
 	}
+
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
 		time *= 0.001;
