@@ -70,12 +70,15 @@ class App {
 		) {
 			if (this._pressedKeys["shift"]) {
 				this._currentAnimationAction = this._animationMap["Run"];
+				this._speed = 350;
 			} else {
 				this._currentAnimationAction = this._animationMap["Walk"];
+				this._speed = 80;
 			}
 		} else {
 			/**키가 안눌러졌을때 */
 			this._currentAnimationAction = this._animationMap["Idle"];
+			this._speed = 0;
 		}
 		/**previousAnimationAction이전 애니메이션 _currentAnimationAction 현재 애니메이션 */
 		if (previousAnimationAction !== this._currentAnimationAction) {
@@ -223,6 +226,35 @@ class App {
 		/** 브라우저에게 수행하기를 원하는 애니메이션을 알리고 다음 리페인트가 진행되기 전에 해당 애니메이션을 업데이트하는 함수를 호출하게 합니다. 이 메소드는 리페인트 이전에 실행할 콜백을 인자로 받습니다. */
 		requestAnimationFrame(this.render.bind(this));
 	}
+	/**키가 누를때 해당방향으로 움직임 */
+	_directionOffset() {
+		const pressedKeys = this._pressedKeys;
+		let directionOffset = 0; // w
+
+		if (pressedKeys["w"]) {
+			if (pressedKeys["a"]) {
+				directionOffset = Math.PI / 4; // w+a (45도)
+			} else if (pressedKeys["d"]) {
+				directionOffset = -Math.PI / 4; // w+d (-45도)
+			}
+		} else if (pressedKeys["s"]) {
+			if (pressedKeys["a"]) {
+				directionOffset = Math.PI / 4 + Math.PI / 2; // s+a (135도)
+			} else if (pressedKeys["d"]) {
+				directionOffset = -Math.PI / 4 - Math.PI / 2; // s+d (-135도)
+			} else {
+				directionOffset = Math.PI; // s (180도)
+			}
+		} else if (pressedKeys["a"]) {
+			directionOffset = Math.PI / 2; // a (90도)
+		} else if (pressedKeys["d"]) {
+			directionOffset = -Math.PI / 2; // d (-90도)
+		}
+
+		return directionOffset;
+	}
+	/**캐릭터 속도값 */
+	_speed = 0;
 
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
@@ -240,6 +272,59 @@ class App {
 		if (this._mixer) {
 			const deltaTime = time - this._previousTime;
 			this._mixer.update(deltaTime);
+
+			const angleCameraDirectionAxisY =
+				Math.atan2(
+					this._camera.position.x - this._model.position.x,
+					this._camera.position.z - this._model.position.z
+				) + Math.PI;
+
+			/**y축에서 angleCameraDirectionAxisY만큼 회전  */
+			const rotateQuarternion = new THREE.Quaternion();
+			rotateQuarternion.setFromAxisAngle(
+				new THREE.Vector3(0, 1, 0),
+				angleCameraDirectionAxisY + this._directionOffset()
+			);
+
+			/**실제 캐릭터 회전하게 해주는 코드 */
+			this._model.quaternion.rotateTowards(
+				rotateQuarternion,
+				THREE.MathUtils.degToRad(5)
+			);
+			this._model.quaternion.rotateTowards(
+				rotateQuarternion,
+				THREE.MathUtils.degToRad(5)
+			);
+
+			/**캐릭터 이동방향 기준이 카메라 방향 */
+			const walkDirection = new THREE.Vector3();
+			this._camera.getWorldDirection(walkDirection);
+			/**하늘이나 땅아래로 못움직이게 */
+			walkDirection.y = 0;
+			/**정주화 */
+			walkDirection.normalize();
+
+			/**회전 */
+			walkDirection.applyAxisAngle(
+				new THREE.Vector3(0, 1, 0),
+				this._directionOffset()
+			);
+			/**움직임 계산값 */
+			const moveX = walkDirection.x * (this._speed * deltaTime);
+			const moveZ = walkDirection.z * (this._speed * deltaTime);
+
+			this._model.position.x += moveX;
+			this._model.position.z += moveZ;
+
+			/**캐릭터가 항상 카메라 중앙에 */
+			this._camera.position.x += moveX;
+			this._camera.position.z += moveZ;
+
+			this._controls.target.set(
+				this._model.position.x,
+				this._model.position.y,
+				this._model.position.z
+			);
 		}
 		this._previousTime = time;
 	}
