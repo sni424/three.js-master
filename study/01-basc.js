@@ -41,6 +41,10 @@ class App {
 	_setupControls() {
 		this._controls = new OrbitControls(this._camera, this._divCotainer);
 		this._controls.target.set(0, 100, 0);
+		/** OrbitControls shift기능 막음*/
+		this._controls.enablePan = false;
+		/**화면회전 부드럽게 */
+		this._controls.enableDamping = true;
 
 		const stats = new Stats();
 		this._divCotainer.appendChild(stats.dom);
@@ -70,15 +74,21 @@ class App {
 		) {
 			if (this._pressedKeys["shift"]) {
 				this._currentAnimationAction = this._animationMap["Run"];
-				this._speed = 350;
+				// this._speed = 350;
+				this._maxSpeed = 350;
+				this._acceleration = 3;
 			} else {
 				this._currentAnimationAction = this._animationMap["Walk"];
-				this._speed = 80;
+				// this._speed = 80;
+				this._maxSpeed = 80;
+				this._acceleration = 3;
 			}
 		} else {
 			/**키가 안눌러졌을때 */
 			this._currentAnimationAction = this._animationMap["Idle"];
 			this._speed = 0;
+			this._maxSpeed = 0;
+			this._acceleration = 0;
 		}
 		/**previousAnimationAction이전 애니메이션 _currentAnimationAction 현재 애니메이션 */
 		if (previousAnimationAction !== this._currentAnimationAction) {
@@ -226,6 +236,8 @@ class App {
 		/** 브라우저에게 수행하기를 원하는 애니메이션을 알리고 다음 리페인트가 진행되기 전에 해당 애니메이션을 업데이트하는 함수를 호출하게 합니다. 이 메소드는 리페인트 이전에 실행할 콜백을 인자로 받습니다. */
 		requestAnimationFrame(this.render.bind(this));
 	}
+	/**캐릭터가 바라보는 방향값 */
+	_previousDirectionOffset = 0;
 	/**키가 누를때 해당방향으로 움직임 */
 	_directionOffset() {
 		const pressedKeys = this._pressedKeys;
@@ -249,12 +261,20 @@ class App {
 			directionOffset = Math.PI / 2; // a (90도)
 		} else if (pressedKeys["d"]) {
 			directionOffset = -Math.PI / 2; // d (-90도)
+		} else {
+			/**키보드가 아무것도 안눌렸을때 */
+			directionOffset = this._previousDirectionOffset;
 		}
+		this._previousDirectionOffset = directionOffset;
 
 		return directionOffset;
 	}
 	/**캐릭터 속도값 */
 	_speed = 0;
+	/**최대 속도 */
+	_maxSpeed = 0;
+	/**가속도 */
+	_acceleration = 0;
 
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
@@ -309,6 +329,9 @@ class App {
 				new THREE.Vector3(0, 1, 0),
 				this._directionOffset()
 			);
+			/**캐릭터가  미끄러지는 현상 해결 */
+			if (this._speed < this._maxSpeed) this._speed += this._acceleration;
+			else this._speed -= this._acceleration * 2;
 			/**움직임 계산값 */
 			const moveX = walkDirection.x * (this._speed * deltaTime);
 			const moveZ = walkDirection.z * (this._speed * deltaTime);
