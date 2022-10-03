@@ -3,6 +3,10 @@ import { OrbitControls } from "../examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "../examples/jsm/loaders/GLTFLoader.js";
 import Stats from "../examples/jsm/libs/stats.module.js";
 
+/**Octree3차원 공간을 분활 충돌검사 실행가능 */
+import { Octree } from "../examples/jsm/math/Octree.js";
+import { Capsule } from "../examples/jsm/math/Capsule.js";
+
 /** ._ 밑줄이 있는 것은 app클래스 내부에서만 쓰이는 프라이빗 메서드  */
 class App {
 	constructor() {
@@ -26,6 +30,7 @@ class App {
 		this._scene = scene;
 
 		/**카메라 light, 3차원 모델을 설정하는 _setupModel을 설정  */
+		this._setupOctree();
 		this._setupCamera();
 		this._setupLight();
 		this._setupModel();
@@ -37,6 +42,10 @@ class App {
 
 		/**render메서드는 3차원 그래픽장면을 만들어주는 메서드 */
 		requestAnimationFrame(this.render.bind(this));
+	}
+	/**충돌감지 */
+	_setupOctree() {
+		this._worldOctree = new Octree();
 	}
 	_setupControls() {
 		this._controls = new OrbitControls(this._camera, this._divCotainer);
@@ -175,6 +184,9 @@ class App {
 		/**평면은 그림자를 받음 */
 		plane.receiveShadow = true;
 
+		/**바닥 모듈을 옥트리 객체에 추가 */
+		this._worldOctree.fromGraphNode(plane);
+
 		/**glf 캐릭터 파일 불러옴 */
 		new GLTFLoader().load("./data/character.glb", (gitf) => {
 			const model = gitf.scene;
@@ -205,6 +217,17 @@ class App {
 			const box = new THREE.Box3().setFromObject(model);
 			model.position.y = (box.max.y - box.min.y) / 2;
 
+			/**캐릭터 높이 값을 가져옴 */
+			const height = box.max.y - box.min.y;
+			/**radius값을 가져오기위해 z값을 가져옴 */
+			const diameter = box.max.z - box.min.z;
+			/**캐릭터 충돌을 위해 캡슐화 */
+			model._capsule = new Capsule(
+				new THREE.Vector3(0, diameter / 2, 0),
+				new THREE.Vector3(0, height - diameter / 2, 0),
+				diameter / 2
+			);
+
 			/**월드 좌표축 생성 */
 			const axisHelper = new THREE.AxesHelper(1000);
 			this._scene.add(axisHelper);
@@ -214,6 +237,16 @@ class App {
 			this._scene.add(boxHelper);
 			this._boxHelper = boxHelper;
 			this._model = model;
+
+			/**박스추가 */
+			const boxG = new THREE.BoxGeometry(100, diameter - 5, 100);
+			const boxM = new THREE.Mesh(boxG, planeMaterial);
+			boxM.receiveShadow = true;
+			boxM.castShadow = true;
+			boxM.position.set(150, 0, 0);
+			this._scene.add(boxM);
+			/**해당박스를 충돌에 추가 */
+			this._worldOctree.fromGraphNode(boxM);
 		});
 	}
 	resize() {
@@ -276,6 +309,12 @@ class App {
 	/**가속도 */
 	_acceleration = 0;
 
+	/**캐릭터가 지면위에 있는지 확인 */
+	_bOnTheGround = false;
+	/**캐릭터가 허공에 있을때 */
+	_fallingAcceleration = 0;
+	_fallingSpeed = 0;
+
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
 		time *= 0.001;
@@ -320,7 +359,8 @@ class App {
 			const walkDirection = new THREE.Vector3();
 			this._camera.getWorldDirection(walkDirection);
 			/**하늘이나 땅아래로 못움직이게 */
-			walkDirection.y = 0;
+			// walkDirection.y = 0;
+			walkDirection.y = this._bOnTheGround ? 0 : -1;
 			/**정주화 */
 			walkDirection.normalize();
 
@@ -332,16 +372,67 @@ class App {
 			/**캐릭터가  미끄러지는 현상 해결 */
 			if (this._speed < this._maxSpeed) this._speed += this._acceleration;
 			else this._speed -= this._acceleration * 2;
-			/**움직임 계산값 */
-			const moveX = walkDirection.x * (this._speed * deltaTime);
-			const moveZ = walkDirection.z * (this._speed * deltaTime);
 
-			this._model.position.x += moveX;
-			this._model.position.z += moveZ;
+			/**캐릭터가 떨어지는 속도와 가속도 값 */
+			if (!this._bOnTheGround) {
+				this._fallingAcceleration += 1;
+				this._fallingSpeed += Math.pow(this._fallingAcceleration, 2);
+			} else {
+				this._fallingAcceleration = 0;
+				this._fallingSpeed = 0;
+			}
+			/**속도 백터를 구함 */
+			const velocity = new THREE.Vector3(
+				walkDirection.x * this._speed,
+				walkDirection.y * this._fallingSpeed,
+				walkDirection.z * this._speed
+			);
+			const deltaPosition = velocity.clone().multiplyScalar(deltaTime);
+
+			/**움직임 계산값 */
+			// const moveX = walkDirection.x * (this._speed * deltaTime);
+			// const moveZ = walkDirection.z * (this._speed * deltaTime);
+
+			// this._model.position.x += moveX;
+			// this._model.position.z += moveZ;
+
+			/**캐릭터의 움직임을 캡슐안에 */
+			this._model._capsule.translate(deltaPosition);
+
+			/**충돌이 발생하면 result가 발생 */
+			const result = this._worldOctree.capsuleIntersect(this._model._capsule);
+			if (result) {
+				// 충돌한 경우
+				this._model._capsule.translate(
+					result.normal.multiplyScalar(result.depth)
+				);
+				this._bOnTheGround = true;
+			} else {
+				// 충돌하지 않은 경우
+				this._bOnTheGround = false;
+			}
+
+			/**모델이 변경되기전 */
+			const previousPosition = this._model.position.clone();
+			/**캡슐의 높이 */
+			const capsuleHeight =
+				this._model._capsule.end.y -
+				this._model._capsule.start.y +
+				this._model._capsule.radius * 2;
+			/**모델의 위치를 캡슐의 위치에 맞춤 */
+			this._model.position.set(
+				this._model._capsule.start.x,
+				this._model._capsule.start.y -
+					this._model._capsule.radius +
+					capsuleHeight / 2,
+				this._model._capsule.start.z
+			);
 
 			/**캐릭터가 항상 카메라 중앙에 */
-			this._camera.position.x += moveX;
-			this._camera.position.z += moveZ;
+			// this._camera.position.x += moveX;
+			// this._camera.position.z += moveZ;
+			this._camera.position.x -= previousPosition.x - this._model.position.x;
+			this._camera.position.z -= previousPosition.z - this._model.position.z;
 
 			this._controls.target.set(
 				this._model.position.x,
