@@ -1,5 +1,6 @@
 import * as THREE from "../build/three.module.js";
-
+import { OrbitControls } from "../examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "../examples/jsm/loaders/GLTFLoader.js";
 /** ._ 밑줄이 있는 것은 app클래스 내부에서만 쓰이는 프라이빗 메서드  */
 
 class App {
@@ -23,6 +24,7 @@ class App {
 		this._setupCamera();
 		this._setupLight();
 		this._setupModel();
+		this._setupControls();
 
 		/**창크기가 변경될때 발생 bind을 사용한 이유는 this가 app클래스 객체가 되기위함 */
 		window.onresize = this.resize.bind(this);
@@ -31,15 +33,19 @@ class App {
 		/**render메서드는 3차원 그래픽장면을 만들어주는 메서드 */
 		requestAnimationFrame(this.render.bind(this));
 	}
+	_setupControls() {
+		this._controls = new OrbitControls(this._camera, this._divCotainer);
+	}
 
 	_setupCamera() {
-		/**width,height 3차원 영역을 표현할 가로와 세로 크기 */
-		const width = this._divCotainer.clientWidth;
-		const height = this._divCotainer.clientHeight;
-		/**camera객체 생성 */
-		const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
-		camera.position.z = 2;
-		/**또다른 메서드에서 사용가능하도록  this._camera필드 객체로 설정*/
+		const camera = new THREE.PerspectiveCamera(
+			60,
+			window.innerWidth / window.innerHeight,
+			1,
+			500
+		);
+
+		camera.position.z = 200;
 		this._camera = camera;
 	}
 
@@ -47,26 +53,21 @@ class App {
 		/**광원 색상 */
 		const color = 0xffffff;
 		/**광원 세기값 */
-		const intensity = 1;
+		const intensity = 10;
 		/** 광원생성 */
 		const light = new THREE.DirectionalLight(color, intensity);
 		/** 광원 위치 */
-		light.position.set(-1, 2, 4);
+		light.position.set(0, 0, 1);
 		/**광원을 scene 객체에 추가 */
 		this._scene.add(light);
 	}
 	/**파랑색 개열의 정육면제를 생성하는 코드 */
 	_setupModel() {
-		/**정육면체 형상 BoxGeometry는 각각 가로 세로 깊이 값 */
-		const geometry = new THREE.BoxGeometry(1, 1, 1);
-		/**파랑색 개열의 제질 생성 */
-		const material = new THREE.MeshPhongMaterial({ color: 0x44a88 });
-
-		/**geometry와 material 객체를 통해 cube를 생성   */
-		const cube = new THREE.Mesh(geometry, material);
-
-		this._scene.add(cube);
-		this._cube = cube;
+		/**glf 캐릭터 파일 불러옴 */
+		new GLTFLoader().load("./data/character.glb", (gitf) => {
+			const model = gitf.scene;
+			this._scene.add(model);
+		});
 	}
 	resize() {
 		/** divCotainer의 width과height를 가져옴  */
@@ -92,9 +93,7 @@ class App {
 	update(time) {
 		/**받은 time값에 0.001을 곱한다 */
 		time *= 0.001;
-		this._cube.rotation.x = time;
-		this._cube.rotation.y = time;
-		this._cube.rotation.z = time;
+		this._controls.update();
 	}
 }
 
